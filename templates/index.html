@@ -250,6 +250,27 @@
     color: var(--text-muted);
     padding: 14px 18px 0;
   }
+
+  .upload-row {
+    padding: 12px 18px;
+    border-top: 1px solid var(--line);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .upload-row input[type="file"] {
+    display: none;
+  }
+
+  .upload-status {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+  .upload-status.ok { color: var(--verified); }
+  .upload-status.err { color: var(--danger); }
 </style>
 </head>
 <body>
@@ -406,6 +427,57 @@ function drawDualChart(canvas, labels, valuesA, valuesB, labelA, labelB, colorA,
   });
 }
 
+function buildUploadRow(platform, endpoint, hint) {
+  const row = document.createElement('div');
+  row.className = 'upload-row';
+
+  const btn = document.createElement('button');
+  btn.textContent = 'Upload export';
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.multiple = true;
+  input.accept = '.csv,.xls,.xlsx';
+
+  const status = document.createElement('span');
+  status.className = 'upload-status';
+  status.textContent = hint;
+
+  btn.onclick = () => input.click();
+
+  input.onchange = async () => {
+    if (!input.files.length) return;
+    const formData = new FormData();
+    for (const file of input.files) formData.append('files', file);
+
+    status.className = 'upload-status';
+    status.textContent = 'Uploading…';
+    btn.disabled = true;
+
+    try {
+      const res = await fetch(endpoint, { method: 'POST', body: formData });
+      const result = await res.json();
+      if (!res.ok || result.error) {
+        status.className = 'upload-status err';
+        status.textContent = result.error || 'Upload failed.';
+      } else {
+        status.className = 'upload-status ok';
+        status.textContent = `Added ${result.inserted || 0}, updated ${result.updated || 0} days.`;
+        loadData();
+      }
+    } catch (e) {
+      status.className = 'upload-status err';
+      status.textContent = 'Upload failed: ' + e.message;
+    }
+    btn.disabled = false;
+    input.value = '';
+  };
+
+  row.appendChild(btn);
+  row.appendChild(input);
+  row.appendChild(status);
+  return row;
+}
+
 async function loadData() {
   const res = await fetch('/api/data');
   const data = await res.json();
@@ -535,6 +607,8 @@ function renderYoutube(youtube, configured, history, viewsHistory, topVideos) {
   };
   refreshRow.appendChild(btn);
   card.appendChild(refreshRow);
+
+  card.appendChild(buildUploadRow('youtube', '/api/upload/youtube', 'Totals.csv + Table_data.csv from Studio'));
 
   return card;
 }
@@ -686,6 +760,13 @@ function renderManual(platform, entries, substackTopPosts) {
         <tbody>${rows}</tbody>
       </table>`;
     card.appendChild(tableWrap);
+  }
+
+  if (platform === 'linkedin') {
+    card.appendChild(buildUploadRow('linkedin', '/api/upload/linkedin', 'Content + Followers .xls exports'));
+  }
+  if (platform === 'substack') {
+    card.appendChild(buildUploadRow('substack', '/api/upload/substack', 'followers + email_stats .csv exports'));
   }
 
   return card;
