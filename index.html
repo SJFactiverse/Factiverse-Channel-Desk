@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Factiverse — Channel Desk</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Archivo:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #14171A;
+    --surface: #1C2024;
+    --surface-raised: #23272C;
+    --line: #2E3338;
+    --text: #E8E6E1;
+    --text-muted: #8B9198;
+    --verified: #4FB286;
+    --verified-dim: #2E4B41;
+    --manual: #C97B4A;
+    --manual-dim: #4A3B30;
+    --danger: #C9584A;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Archivo', sans-serif;
+    min-height: 100vh;
+  }
+
+  .masthead {
+    border-bottom: 1px solid var(--line);
+    padding: 28px 32px 20px;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .masthead h1 {
+    font-family: 'Big Shoulders Display', sans-serif;
+    font-weight: 700;
+    font-size: 28px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    margin: 0;
+  }
+
+  .masthead .dateline {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--text-muted);
+    letter-spacing: 0.5px;
+  }
+
+  main {
+    padding: 24px 32px 64px;
+    max-width: 1180px;
+    margin: 0 auto;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 20px;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 18px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .card-head .name {
+    font-family: 'Big Shoulders Display', sans-serif;
+    font-weight: 600;
+    font-size: 18px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .tag {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    padding: 4px 8px;
+    border-radius: 2px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .tag.live { background: var(--verified-dim); color: var(--verified); }
+  .tag.manual { background: var(--manual-dim); color: var(--manual); }
+
+  .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+
+  .card-body { padding: 18px; }
+
+  .stat-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--line);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+  }
+  .stat-row:last-child { border-bottom: none; }
+  .stat-row .label { color: var(--text-muted); }
+  .stat-row .value { font-weight: 600; }
+
+  .stale {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 10px;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  button {
+    font-family: 'Archivo', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    border: 1px solid var(--line);
+    background: var(--surface-raised);
+    color: var(--text);
+    padding: 8px 14px;
+    border-radius: 3px;
+    cursor: pointer;
+  }
+  button:hover { border-color: var(--verified); }
+  button.primary { border-color: var(--verified); color: var(--verified); }
+  button.small { padding: 4px 8px; font-size: 11px; }
+
+  .refresh-row { padding: 12px 18px; border-top: 1px solid var(--line); }
+
+  form.manual-form {
+    display: grid;
+    gap: 8px;
+    margin-top: 12px;
+  }
+
+  form.manual-form input {
+    background: var(--bg);
+    border: 1px solid var(--line);
+    color: var(--text);
+    padding: 8px 10px;
+    border-radius: 3px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+  }
+  form.manual-form input::placeholder { color: var(--text-muted); }
+
+  .entries {
+    margin-top: 14px;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+
+  .entry {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--line);
+    color: var(--text-muted);
+  }
+  .entry .meta { color: var(--text); }
+  .entry button { padding: 2px 6px; font-size: 10px; }
+
+  .empty {
+    color: var(--text-muted);
+    font-size: 13px;
+    font-style: italic;
+  }
+
+  .instructions {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 10px;
+    line-height: 1.5;
+  }
+  .instructions a { color: var(--verified); }
+
+  .chart-wrap {
+    padding: 4px 18px 14px;
+    height: 120px;
+  }
+
+  .chart-empty {
+    padding: 0 18px 14px;
+    font-size: 11px;
+    color: var(--text-muted);
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  .video-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    margin-top: 4px;
+  }
+  .video-table th {
+    text-align: left;
+    color: var(--text-muted);
+    font-weight: 500;
+    padding: 6px 8px;
+    border-bottom: 1px solid var(--line);
+  }
+  .video-table td {
+    padding: 6px 8px;
+    border-bottom: 1px solid var(--line);
+    color: var(--text);
+  }
+  .video-table td.title {
+    max-width: 220px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: 'Archivo', sans-serif;
+    font-size: 12px;
+  }
+  .section-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    padding: 14px 18px 0;
+  }
+</style>
+</head>
+<body>
+
+<div class="masthead">
+  <h1>Channel Desk</h1>
+  <div class="dateline" id="dateline"></div>
+</div>
+
+<main>
+  <div class="grid" id="grid"></div>
+</main>
+
+<script>
+const PLATFORM_META = {
+  youtube: {
+    label: "YouTube",
+    mode: "live",
+    fields: ["subscriber_count", "view_count", "video_count"],
+    fieldLabels: { subscriber_count: "Subscribers", view_count: "Total views", video_count: "Videos" }
+  },
+  x: {
+    label: "X",
+    mode: "manual",
+    fields: ["impressions", "likes", "followers"],
+    placeholders: { impressions: "Impressions", likes: "Likes", followers: "Follower count" },
+    chartFields: ["impressions", "likes"]
+  },
+  linkedin: {
+    label: "LinkedIn",
+    mode: "manual",
+    fields: ["impressions", "reactions", "new_followers"],
+    placeholders: { impressions: "Impressions", reactions: "Reactions", new_followers: "New followers" },
+    chartFields: ["impressions", "reactions"]
+  },
+  substack: {
+    label: "Substack",
+    mode: "manual",
+    fields: ["subscribers", "open_rate", "reads"],
+    placeholders: { open_rate: "Open rate %", subscribers: "Subscriber count", reads: "Reads" },
+    chartFields: ["subscribers"]
+  }
+};
+
+function setDateline() {
+  const el = document.getElementById('dateline');
+  el.textContent = new Date().toUTCString();
+}
+setDateline();
+setInterval(setDateline, 30000);
+
+function timeAgo(iso) {
+  if (!iso) return "never";
+  const diff = (Date.now() - new Date(iso).getTime()) / 1000;
+  if (diff < 60) return "moments ago";
+  if (diff < 3600) return Math.floor(diff / 60) + "m ago";
+  if (diff < 86400) return Math.floor(diff / 3600) + "h ago";
+  return Math.floor(diff / 86400) + "d ago";
+}
+
+const charts = {};
+
+function drawChart(canvas, labels, values, color) {
+  const key = canvas.id;
+  if (charts[key]) charts[key].destroy();
+  charts[key] = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        data: values,
+        borderColor: color,
+        backgroundColor: color + '22',
+        fill: true,
+        tension: 0.25,
+        pointRadius: 2,
+        borderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { enabled: true } },
+      scales: {
+        x: { display: false },
+        y: {
+          display: true,
+          grid: { color: '#2E3338' },
+          ticks: { color: '#8B9198', font: { family: 'IBM Plex Mono', size: 10 } }
+        }
+      }
+    }
+  });
+}
+
+function drawDualChart(canvas, labels, valuesA, valuesB, labelA, labelB, colorA, colorB) {
+  const key = canvas.id;
+  if (charts[key]) charts[key].destroy();
+  charts[key] = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: labelA,
+          data: valuesA,
+          borderColor: colorA,
+          backgroundColor: colorA + '22',
+          fill: true,
+          tension: 0.25,
+          pointRadius: 2,
+          borderWidth: 2,
+          yAxisID: 'yA'
+        },
+        {
+          label: labelB,
+          data: valuesB,
+          borderColor: colorB,
+          backgroundColor: colorB + '00',
+          fill: false,
+          tension: 0.25,
+          pointRadius: 2,
+          borderWidth: 2,
+          yAxisID: 'yB'
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: true,
+          position: 'top',
+          align: 'end',
+          labels: { color: '#8B9198', font: { family: 'IBM Plex Mono', size: 10 }, boxWidth: 10, padding: 8 }
+        },
+        tooltip: { enabled: true }
+      },
+      scales: {
+        x: { display: false },
+        yA: {
+          position: 'left',
+          grid: { color: '#2E3338' },
+          ticks: { color: colorA, font: { family: 'IBM Plex Mono', size: 10 } }
+        },
+        yB: {
+          position: 'right',
+          grid: { display: false },
+          ticks: { color: colorB, font: { family: 'IBM Plex Mono', size: 10 } }
+        }
+      }
+    }
+  });
+}
+
+async function loadData() {
+  const res = await fetch('/api/data');
+  const data = await res.json();
+  render(data);
+}
+
+function render(data) {
+  const grid = document.getElementById('grid');
+  grid.innerHTML = '';
+  grid.appendChild(renderYoutube(
+    data.youtube,
+    data.youtube_configured,
+    data.youtube_history || [],
+    data.youtube_views_history || [],
+    data.youtube_top_videos || null
+  ));
+  for (const platform of ['x', 'linkedin', 'substack']) {
+    grid.appendChild(renderManual(platform, data.manual[platform] || [], data.substack_top_posts || []));
+  }
+}
+
+function renderYoutube(youtube, configured, history, viewsHistory, topVideos) {
+  const card = document.createElement('div');
+  card.className = 'card';
+
+  const head = document.createElement('div');
+  head.className = 'card-head';
+  head.innerHTML = `<span class="name">YouTube</span>
+    <span class="tag live"><span class="dot"></span>Automated</span>`;
+  card.appendChild(head);
+
+  const body = document.createElement('div');
+  body.className = 'card-body';
+
+  if (!configured) {
+    body.innerHTML = `<p class="empty">YouTube API key not set yet. Add YOUTUBE_API_KEY and YOUTUBE_CHANNEL_ID in Render's Environment tab.</p>`;
+  } else if (!youtube) {
+    body.innerHTML = `<p class="empty">No data pulled yet. Hit refresh.</p>`;
+  } else {
+    const rows = [
+      ['Subscribers', Number(youtube.subscriber_count).toLocaleString()],
+      ['Total views', Number(youtube.view_count).toLocaleString()],
+      ['Videos', Number(youtube.video_count).toLocaleString()]
+    ];
+    body.innerHTML = rows.map(([label, value]) =>
+      `<div class="stat-row"><span class="label">${label}</span><span class="value">${value}</span></div>`
+    ).join('');
+    const stale = document.createElement('div');
+    stale.className = 'stale';
+    stale.textContent = 'Last pulled ' + timeAgo(youtube.fetched_at);
+    body.appendChild(stale);
+  }
+
+  card.appendChild(body);
+
+  if (history.length >= 2) {
+    const wrap = document.createElement('div');
+    wrap.className = 'chart-wrap';
+    const canvas = document.createElement('canvas');
+    canvas.id = 'chart-youtube';
+    wrap.appendChild(canvas);
+    card.appendChild(wrap);
+    const labels = history.map(h => h.fetched_at.slice(0, 10));
+    const values = history.map(h => h.subscriber_count);
+    requestAnimationFrame(() => drawChart(canvas, labels, values, '#4FB286'));
+  } else {
+    const empty = document.createElement('div');
+    empty.className = 'chart-empty';
+    empty.textContent = 'Trend line appears after two or more refreshes.';
+    card.appendChild(empty);
+  }
+
+  if (viewsHistory.length >= 2) {
+    const label = document.createElement('div');
+    label.className = 'section-label';
+    label.textContent = 'Daily views — Studio export';
+    card.appendChild(label);
+
+    const wrap = document.createElement('div');
+    wrap.className = 'chart-wrap';
+    const canvas = document.createElement('canvas');
+    canvas.id = 'chart-youtube-views';
+    wrap.appendChild(canvas);
+    card.appendChild(wrap);
+    const labels = viewsHistory.map(h => h.entry_date);
+    const values = viewsHistory.map(h => h.data.views);
+    requestAnimationFrame(() => drawChart(canvas, labels, values, '#4FB286'));
+  }
+
+  if (topVideos && topVideos.length) {
+    const label = document.createElement('div');
+    label.className = 'section-label';
+    label.textContent = 'Top videos — Studio export';
+    card.appendChild(label);
+
+    const tableWrap = document.createElement('div');
+    tableWrap.style.padding = '8px 18px 4px';
+    const rows = topVideos.slice(0, 5).map(v => `
+      <tr>
+        <td class="title">${v.title || v.content}</td>
+        <td>${Number(v.views || 0).toLocaleString()}</td>
+        <td>${Number(v.watch_time_hours || 0).toFixed(1)}h</td>
+        <td>${v.ctr !== null && v.ctr !== undefined ? v.ctr + '%' : '—'}</td>
+      </tr>`).join('');
+    tableWrap.innerHTML = `
+      <table class="video-table">
+        <thead><tr><th>Video</th><th>Views</th><th>Watch time</th><th>CTR</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+    card.appendChild(tableWrap);
+  }
+
+  const refreshRow = document.createElement('div');
+  refreshRow.className = 'refresh-row';
+  const btn = document.createElement('button');
+  btn.className = 'primary';
+  btn.textContent = 'Refresh now';
+  btn.onclick = async () => {
+    btn.textContent = 'Pulling…';
+    btn.disabled = true;
+    const res = await fetch('/api/refresh-youtube', { method: 'POST' });
+    const result = await res.json();
+    if (result.error) alert(result.error);
+    btn.textContent = 'Refresh now';
+    btn.disabled = false;
+    loadData();
+  };
+  refreshRow.appendChild(btn);
+  card.appendChild(refreshRow);
+
+  return card;
+}
+
+function renderManual(platform, entries, substackTopPosts) {
+  const meta = PLATFORM_META[platform];
+  const card = document.createElement('div');
+  card.className = 'card';
+
+  const head = document.createElement('div');
+  head.className = 'card-head';
+  head.innerHTML = `<span class="name">${meta.label}</span>
+    <span class="tag manual"><span class="dot"></span>Manual</span>`;
+  card.appendChild(head);
+
+  const body = document.createElement('div');
+  body.className = 'card-body';
+
+  const latest = entries[0];
+  if (latest) {
+    const rows = meta.fields.map(f => {
+      const val = latest.data[f];
+      return `<div class="stat-row"><span class="label">${meta.placeholders[f]}</span><span class="value">${val !== undefined ? val : '—'}</span></div>`;
+    }).join('');
+    body.innerHTML = rows;
+    const stale = document.createElement('div');
+    stale.className = 'stale';
+    stale.textContent = 'Logged for ' + latest.entry_date;
+    body.appendChild(stale);
+  } else {
+    body.innerHTML = `<p class="empty">No entries logged yet. Pull this from ${meta.label}'s own dashboard and enter it below.</p>`;
+  }
+
+  const form = document.createElement('form');
+  form.className = 'manual-form';
+  form.innerHTML = `
+    <input type="date" name="entry_date" required>
+    ${meta.fields.map(f => `<input type="number" step="any" name="${f}" placeholder="${meta.placeholders[f]}">`).join('')}
+    <button type="submit">Log entry</button>
+  `;
+  form.onsubmit = async (e) => {
+    e.preventDefault();
+    const formData = new FormData(form);
+    const payload = {};
+    for (const [key, value] of formData.entries()) {
+      payload[key] = value === '' ? null : (key === 'entry_date' ? value : Number(value));
+    }
+    await fetch(`/api/manual/${platform}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    form.reset();
+    loadData();
+  };
+  body.appendChild(form);
+
+  if (entries.length) {
+    const entriesWrap = document.createElement('div');
+    entriesWrap.className = 'entries';
+    entries.forEach(entry => {
+      const row = document.createElement('div');
+      row.className = 'entry';
+      const summary = meta.fields.map(f => entry.data[f]).filter(v => v !== undefined && v !== null).join(' / ');
+      row.innerHTML = `<span class="meta">${entry.entry_date} — ${summary}</span>`;
+      const del = document.createElement('button');
+      del.textContent = '×';
+      del.onclick = async () => {
+        await fetch(`/api/manual/${platform}/${entry.id}`, { method: 'DELETE' });
+        loadData();
+      };
+      row.appendChild(del);
+      entriesWrap.appendChild(row);
+    });
+    body.appendChild(entriesWrap);
+  }
+
+  card.appendChild(body);
+
+  const chartFields = meta.chartFields || [meta.fields[0]];
+
+  if (chartFields.length === 2) {
+    const [fieldA, fieldB] = chartFields;
+    const chartable = entries.filter(e =>
+      (e.data[fieldA] !== undefined && e.data[fieldA] !== null) ||
+      (e.data[fieldB] !== undefined && e.data[fieldB] !== null)
+    );
+    if (chartable.length >= 2) {
+      const wrap = document.createElement('div');
+      wrap.className = 'chart-wrap';
+      const canvas = document.createElement('canvas');
+      canvas.id = 'chart-' + platform;
+      wrap.appendChild(canvas);
+      card.appendChild(wrap);
+      const chronological = [...chartable].reverse();
+      const labels = chronological.map(e => e.entry_date);
+      const valuesA = chronological.map(e => e.data[fieldA] ?? null);
+      const valuesB = chronological.map(e => e.data[fieldB] ?? null);
+      requestAnimationFrame(() => drawDualChart(
+        canvas, labels, valuesA, valuesB,
+        meta.placeholders[fieldA], meta.placeholders[fieldB],
+        '#C97B4A', '#8B9198'
+      ));
+    } else {
+      const empty = document.createElement('div');
+      empty.className = 'chart-empty';
+      empty.textContent = `Trend lines appear once ${meta.label} data is logged twice.`;
+      card.appendChild(empty);
+    }
+  } else {
+    const chartField = chartFields[0];
+    const chartable = entries.filter(e => e.data[chartField] !== undefined && e.data[chartField] !== null);
+    if (chartable.length >= 2) {
+      const wrap = document.createElement('div');
+      wrap.className = 'chart-wrap';
+      const canvas = document.createElement('canvas');
+      canvas.id = 'chart-' + platform;
+      wrap.appendChild(canvas);
+      card.appendChild(wrap);
+      const chronological = [...chartable].reverse();
+      const labels = chronological.map(e => e.entry_date);
+      const values = chronological.map(e => e.data[chartField]);
+      requestAnimationFrame(() => drawChart(canvas, labels, values, '#C97B4A'));
+    } else {
+      const empty = document.createElement('div');
+      empty.className = 'chart-empty';
+      empty.textContent = `Trend line appears once ${meta.placeholders[chartField].toLowerCase()} is logged twice.`;
+      card.appendChild(empty);
+    }
+  }
+
+  if (platform === 'substack' && substackTopPosts && substackTopPosts.length) {
+    const label = document.createElement('div');
+    label.className = 'section-label';
+    label.textContent = 'Top posts by open rate';
+    card.appendChild(label);
+
+    const tableWrap = document.createElement('div');
+    tableWrap.style.padding = '8px 18px 4px';
+    const rows = substackTopPosts.map(p => `
+      <tr>
+        <td class="title">${p.data.title || p.entry_date}</td>
+        <td>${p.data.open_rate !== undefined ? p.data.open_rate + '%' : '—'}</td>
+        <td>${p.data.reads !== undefined ? Number(p.data.reads).toLocaleString() : '—'}</td>
+      </tr>`).join('');
+    tableWrap.innerHTML = `
+      <table class="video-table">
+        <thead><tr><th>Post</th><th>Open rate</th><th>Reads</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+    card.appendChild(tableWrap);
+  }
+
+  return card;
+}
+
+loadData();
+</script>
+</body>
+</html>
