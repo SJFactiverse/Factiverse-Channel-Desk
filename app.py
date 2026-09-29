@@ -396,7 +396,7 @@ def api_data():
             for platform in PLATFORMS:
                 cur.execute(
                     "SELECT id, entry_date, data, logged_at FROM manual_entries "
-                    "WHERE platform = %s ORDER BY entry_date DESC, logged_at DESC LIMIT 60;",
+                    "WHERE platform = %s ORDER BY entry_date DESC, logged_at DESC LIMIT 180;",
                     (platform,)
                 )
                 manual[platform] = cur.fetchall()
