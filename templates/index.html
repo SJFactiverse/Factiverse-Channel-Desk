@@ -1,1 +1,897 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Channel Desk — Factiverse</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<style>
+  /* Factiverse design system tokens */
+  :root {
+    --fv-white:        #FFFFFF;
+    --fv-band:         #FDF7D7;
+    --fv-yellow-light: #FDF2C7;
+    --fv-highlight:    #FDF2BD;
+    --fv-light-blue:   #F6F7FF;
 
+    --fv-yellow:       #F8C608;
+    --fv-blue:         #0984F8;
+
+    --fv-supported:    #00CC5D;
+    --fv-disputed:     #F4382F;
+    --fv-opinion:      #DCDCDC;
+
+    --fv-ink:          #000000;
+    --fv-brand-dark:   #171717;
+    --fv-muted:        #757575;
+    --fv-link:         #1D62D1;
+
+    --fv-line:         #CCD5D4;
+
+    --fv-radius-sm: 8px;
+    --fv-radius-md: 16px;
+
+    --fv-dur:  320ms;
+    --fv-ease: cubic-bezier(0.25, 0, 0.1, 1);
+
+    --fv-font-serif: 'ABC Arizona Serif', Georgia, 'Times New Roman', serif;
+    --fv-font-sans:  'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; overflow-x: hidden; }
+
+  body {
+    margin: 0;
+    background: var(--fv-white);
+    color: var(--fv-brand-dark);
+    font-family: var(--fv-font-sans);
+    font-size: 15px;
+    line-height: 1.5;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  /* Signature corner glow: anchored to the top-right, bleeding off, never
+     clipped and never centred behind text. */
+  body::before {
+    content: "";
+    position: absolute;
+    top: -240px;
+    right: -200px;
+    width: 660px;
+    height: 660px;
+    border-radius: 50%;
+    background: radial-gradient(circle,
+      rgba(248, 198, 8, 0.26) 0%,
+      rgba(248, 198, 8, 0.10) 45%,
+      rgba(248, 198, 8, 0) 70%);
+    pointer-events: none;
+    z-index: -1;
+  }
+
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 48px 30px 90px; }
+
+  /* ---- eyebrow / labels ---- */
+
+  .eyebrow {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--fv-muted);
+  }
+
+  /* ---- masthead ---- */
+
+  .masthead {
+    display: flex; align-items: flex-end; justify-content: space-between;
+    gap: 24px; flex-wrap: wrap;
+    padding-bottom: 22px;
+    border-bottom: 1px solid var(--fv-line);
+  }
+  .masthead h1 {
+    margin: 6px 0 0;
+    font-family: var(--fv-font-serif);
+    font-size: 44px;
+    font-weight: 300;
+    letter-spacing: -0.02em;
+    line-height: 1.05;
+  }
+  .masthead .sub { margin: 8px 0 0; font-size: 15px; color: var(--fv-muted); max-width: 52ch; }
+  .masthead .when { margin: 0; font-size: 13px; color: var(--fv-muted); }
+
+  /* ---- channel rows ---- */
+
+  .channel { border-bottom: 1px solid var(--fv-line); padding: 30px 0 24px; }
+
+  .channel-top {
+    display: grid;
+    grid-template-columns: minmax(220px, 320px) 1fr;
+    gap: 36px;
+    align-items: center;
+  }
+
+  .name-row { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  .name-row h2 {
+    margin: 0;
+    font-family: var(--fv-font-serif);
+    font-size: 26px;
+    font-weight: 400;
+    letter-spacing: -0.01em;
+  }
+
+  .figure-row { display: flex; align-items: baseline; gap: 12px; margin-top: 14px; flex-wrap: wrap; }
+  .figure {
+    font-size: 46px;
+    font-weight: 600;
+    letter-spacing: -0.03em;
+    line-height: 1;
+    font-feature-settings: 'tnum' 1;
+  }
+  .figure.absent { color: var(--fv-muted); font-weight: 400; }
+
+  /* Verdict language carries direction: growth is Supported, decline Disputed. */
+  .delta { font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; }
+  .delta .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+  .delta.up   { color: var(--fv-supported); }
+  .delta.down { color: var(--fv-disputed); }
+  .delta.flat { color: var(--fv-muted); }
+
+  .figure-label { font-size: 14px; color: var(--fv-muted); margin-top: 6px; }
+
+  .stats { margin-top: 16px; display: flex; gap: 20px; flex-wrap: wrap; font-size: 13px; color: var(--fv-muted); }
+  .stats b { color: var(--fv-brand-dark); font-weight: 600; font-feature-settings: 'tnum' 1; }
+  .stats .gap { color: var(--fv-muted); }
+
+  .note {
+    margin-top: 14px;
+    font-size: 13px;
+    color: var(--fv-muted);
+    background: var(--fv-yellow-light);
+    border-radius: var(--fv-radius-sm);
+    padding: 9px 12px;
+  }
+
+  /* ---- plot ---- */
+
+  .plot { height: 116px; position: relative; }
+  .plot-empty {
+    height: 116px;
+    display: flex; align-items: center; justify-content: center;
+    border: 1px solid var(--fv-line);
+    border-radius: var(--fv-radius-sm);
+    background: var(--fv-light-blue);
+    font-size: 13px; color: var(--fv-muted);
+    text-align: center; padding: 0 24px;
+  }
+
+  /* ---- buttons ---- */
+
+  .tools { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 22px; align-items: center; }
+
+  button {
+    font: inherit; font-size: 13px; font-weight: 500;
+    color: var(--fv-brand-dark);
+    background: var(--fv-white);
+    border: 1px solid var(--fv-line);
+    border-radius: var(--fv-radius-sm);
+    padding: 8px 14px;
+    cursor: pointer;
+    transition: background var(--fv-dur) var(--fv-ease), border-color var(--fv-dur) var(--fv-ease);
+  }
+  button:hover { background: var(--fv-yellow-light); border-color: var(--fv-yellow); }
+  button:focus-visible { outline: 2px solid var(--fv-blue); outline-offset: 2px; }
+  button[aria-expanded="true"] { background: var(--fv-yellow-light); border-color: var(--fv-yellow); }
+  button.primary { background: var(--fv-yellow); border-color: var(--fv-yellow); color: var(--fv-ink); font-weight: 600; }
+  button.primary:hover { background: #E9B907; border-color: #E9B907; }
+  button:disabled { opacity: 0.45; cursor: default; }
+
+  /* ---- panels ---- */
+
+  .panel {
+    display: none;
+    margin-top: 18px;
+    background: var(--fv-white);
+    border: 1px solid var(--fv-line);
+    border-radius: var(--fv-radius-sm);
+    padding: 20px;
+  }
+  .panel.open { display: block; }
+  .panel-note { font-size: 13px; color: var(--fv-muted); margin: 0 0 16px; }
+
+  .field-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; align-items: end; }
+  label { display: block; font-size: 11px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; color: var(--fv-muted); margin-bottom: 5px; }
+  input {
+    font: inherit; font-size: 14px; width: 100%;
+    padding: 8px 10px; color: var(--fv-brand-dark);
+    background: var(--fv-white);
+    border: 1px solid var(--fv-line);
+    border-radius: var(--fv-radius-sm);
+  }
+  input:focus-visible { outline: 2px solid var(--fv-blue); outline-offset: 1px; }
+
+  .status { font-size: 13px; }
+  .status.ok  { color: var(--fv-supported); }
+  .status.err { color: var(--fv-disputed); }
+  input[type="file"] { display: none; }
+
+  /* ---- tables ---- */
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th {
+    text-align: left; font-weight: 500;
+    font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--fv-muted);
+    padding: 0 12px 8px 0; border-bottom: 1px solid var(--fv-line);
+  }
+  td { padding: 9px 12px 9px 0; border-bottom: 1px solid var(--fv-line); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  td.num, th.num { text-align: right; padding-right: 0; font-feature-settings: 'tnum' 1; white-space: nowrap; }
+  td.label { max-width: 420px; }
+  td.label a { color: var(--fv-link); text-decoration: none; }
+  td.label a:hover { text-decoration: underline; }
+  .scroll { max-height: 280px; overflow-y: auto; }
+
+  /* ---- audience bars ---- */
+
+  .aud-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 26px; }
+  .aud h4 { margin: 0 0 12px; font-size: 11px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; color: var(--fv-muted); }
+  .bar-row { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; margin-bottom: 9px; font-size: 13px; }
+  .bar-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bar-track { grid-column: 1 / -1; height: 5px; background: var(--fv-opinion); border-radius: 999px; overflow: hidden; margin-top: -4px; }
+  .bar-fill { height: 100%; background: var(--fv-yellow); border-radius: 999px; }
+  .bar-count { font-weight: 600; font-feature-settings: 'tnum' 1; }
+
+  .loading { padding: 70px 0; color: var(--fv-muted); font-size: 14px; }
+
+  @media (max-width: 760px) {
+    .wrap { padding: 32px 20px 64px; }
+    .channel-top { grid-template-columns: 1fr; gap: 20px; }
+    .masthead h1 { font-size: 34px; }
+    .figure { font-size: 38px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="masthead">
+    <div>
+      <p class="eyebrow">Factiverse</p>
+      <h1>Channel Desk</h1>
+      <p class="sub">What each channel reached, and what it actually sent to the site.</p>
+    </div>
+    <p class="when" id="when"></p>
+  </header>
+
+  <main id="channels"><p class="loading">Loading channels…</p></main>
+</div>
+
+<script>
+// ---------------------------------------------------------------------------
+// Channel specs.
+//   flow  = per-day events, summed across a window (impressions, clicks)
+//   stock = running totals where only the latest value counts (subscribers)
+// ---------------------------------------------------------------------------
+const CHANNELS = {
+  youtube: {
+    name: 'YouTube', source: 'updates automatically',
+    upload: { endpoint: '/api/upload/youtube',
+      note: 'Studio → Analytics → Advanced mode → Export current view. Drop in Totals.csv and Table_data.csv. Select more metrics in Studio to chart watch time and subscribers too.' }
+  },
+  linkedin: {
+    name: 'LinkedIn', source: 'from LinkedIn export',
+    headline: { field: 'clicks', label: 'clicks to site in the 30 days', kind: 'flow' },
+    stats: [
+      { field: 'impressions',     label: 'impressions',      kind: 'flow' },
+      { field: 'engagement_rate', label: 'engagement rate',   kind: 'avg', suffix: '%' },
+      { field: 'new_followers',   label: 'new followers',     kind: 'flow' },
+      { field: 'posts', label: 'posts published', one: 'post published', kind: 'flow' }
+    ],
+    entry: [
+      { field: 'impressions', label: 'Impressions' },
+      { field: 'clicks', label: 'Clicks' },
+      { field: 'reactions', label: 'Reactions' },
+      { field: 'new_followers', label: 'New followers' }
+    ],
+    upload: { endpoint: '/api/upload/linkedin',
+      note: 'Page admin → Analytics → Content and Followers → Export. Upload both .xls files: Content carries clicks and engagement, Followers carries who your audience is.' },
+    needs: { new_followers: 'the Followers export' }
+  },
+  substack: {
+    name: 'Substack', source: 'from Substack export',
+    headline: { field: 'subscribers', label: 'subscribers', kind: 'stock' },
+    stats: [
+      { field: 'subscribes', label: 'joined via a post', kind: 'flow' },
+      { field: 'open_rate',  label: 'open rate, latest post', kind: 'latest', suffix: '%' },
+      { field: 'reads',      label: 'reads, latest post', kind: 'latest' },
+      { field: 'posts', label: 'posts sent', one: 'post sent', kind: 'flow' }
+    ],
+    entry: [
+      { field: 'subscribers', label: 'Subscribers' },
+      { field: 'open_rate', label: 'Open rate %' },
+      { field: 'reads', label: 'Reads' },
+      { field: 'subscribes', label: 'Subscribes' }
+    ],
+    upload: { endpoint: '/api/upload/substack',
+      note: 'Settings → Exports. Upload the followers and email_stats .csv files.' },
+    needs: { subscribers: 'the followers export' }
+  },
+  x: {
+    name: 'X', source: 'typed in by hand',
+    headline: { field: 'impressions', label: 'impressions in the 30 days', kind: 'flow' },
+    stats: [
+      { field: 'likes',     label: 'likes',     kind: 'flow' },
+      { field: 'followers', label: 'followers', kind: 'latest' }
+    ],
+    entry: [
+      { field: 'impressions', label: 'Impressions' },
+      { field: 'likes', label: 'Likes' },
+      { field: 'followers', label: 'Follower count' }
+    ],
+    upload: null
+  }
+};
+
+const ORDER = ['youtube', 'linkedin', 'substack', 'x'];
+const charts = {};
+
+// Chart.js renders to canvas and cannot read CSS custom properties.
+const CSS = getComputedStyle(document.documentElement);
+const tok = (n, fb) => CSS.getPropertyValue(n).trim() || fb;
+const INK   = tok('--fv-brand-dark', '#171717');
+const MUTED = tok('--fv-muted', '#757575');
+const LINEC = tok('--fv-line', '#CCD5D4');
+
+const num = n => Number(n).toLocaleString('en-GB');
+const DASH = '–';
+
+// ---- metric maths ---------------------------------------------------------
+// Every reader returns null when the field is absent across the whole window.
+// A metric nobody uploaded must never be reported as zero.
+
+// Windows are anchored to the most recent day of DATA, not to today. An
+// export that stopped six weeks ago must not have its figures labelled as the
+// last 30 days.
+function shiftDays(iso, n) {
+  const d = new Date(iso + 'T00:00:00Z');
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+
+function anchorDate(rows) {
+  return rows.length ? rows[0].entry_date : null;   // rows arrive newest first
+}
+
+function inWindow(rows, anchor, offset) {
+  if (!anchor) return [];
+  const end   = shiftDays(anchor, -30 * offset);
+  const start = shiftDays(end, -29);
+  return rows.filter(r => r.entry_date <= end && r.entry_date >= start);
+}
+
+function sumWindow(rows, field, offset = 0, anchor = null) {
+  const a = anchor || anchorDate(rows);
+  let total = null;
+  for (const r of inWindow(rows, a, offset)) {
+    const v = r.data[field];
+    if (typeof v === 'number') total = (total || 0) + v;
+  }
+  return total;
+}
+
+function avgWindow(rows, field, offset = 0, anchor = null) {
+  const a = anchor || anchorDate(rows);
+  let total = 0, n = 0;
+  for (const r of inWindow(rows, a, offset)) {
+    const v = r.data[field];
+    if (typeof v === 'number') { total += v; n++; }
+  }
+  return n ? Math.round((total / n) * 100) / 100 : null;
+}
+
+function daysSince(iso) {
+  return Math.floor((Date.now() - new Date(iso + 'T00:00:00Z')) / 86400000);
+}
+
+const shortDate = iso =>
+  new Date(iso + 'T00:00:00Z').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+
+function latestValue(rows, field) {
+  for (const r of rows) {
+    const v = r.data[field];
+    if (typeof v === 'number') return { value: v, date: r.entry_date };
+  }
+  return null;
+}
+
+function valueAt(rows, field, index) {
+  for (let i = index; i < rows.length; i++) {
+    const v = rows[i].data[field];
+    if (typeof v === 'number') return v;
+  }
+  return null;
+}
+
+function pctChange(now, before) {
+  if (before === null || before === undefined || before === 0) return null;
+  if (now === null || now === undefined) return null;
+  return ((now - before) / before) * 100;
+}
+
+function readStat(rows, spec) {
+  if (spec.kind === 'flow')   return sumWindow(rows, spec.field, 0);
+  if (spec.kind === 'avg')    return avgWindow(rows, spec.field, 0);
+  const l = latestValue(rows, spec.field);
+  return l ? l.value : null;
+}
+
+function deltaEl(pct, label) {
+  const el = document.createElement('span');
+  if (pct === null || !isFinite(pct)) { el.className = 'delta flat'; return el; }
+  const r = Math.round(pct);
+  el.className = 'delta ' + (r > 0 ? 'up' : r < 0 ? 'down' : 'flat');
+  // Past a few hundred percent the number stops communicating. Say it as a
+  // multiple instead.
+  const text = Math.abs(r) >= 400
+    ? `${(1 + r / 100).toFixed(r >= 1000 ? 0 : 1)}× ${label}`
+    : `${r > 0 ? '+' : ''}${r}% ${label}`;
+  el.innerHTML = `<span class="dot"></span>${text}`;
+  return el;
+}
+
+// ---- chart ----------------------------------------------------------------
+// Ink line over a yellow wash. Green and red are reserved for verdicts, so a
+// trend line never borrows them.
+
+function drawPlot(canvas, labels, values) {
+  if (charts[canvas.id]) charts[canvas.id].destroy();
+  const sparse = values.length <= 10;
+  charts[canvas.id] = new Chart(canvas, {
+    type: 'line',
+    data: { labels, datasets: [{
+      data: values,
+      borderColor: INK,
+      backgroundColor: 'rgba(248, 198, 8, 0.20)',
+      borderWidth: 1.5,
+      fill: true,
+      tension: sparse ? 0 : 0.2,
+      pointRadius: sparse ? 3 : 0,
+      pointBackgroundColor: INK,
+      pointHoverRadius: 4,
+      spanGaps: true
+    }]},
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      animation: matchMedia('(prefers-reduced-motion: reduce)').matches ? false : { duration: 320 },
+      interaction: { mode: 'index', intersect: false },
+      layout: { padding: { top: 8, right: 4 } },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: INK, cornerRadius: 8, padding: 10, displayColors: false,
+          titleFont: { family: 'Inter', size: 11, weight: '500' },
+          bodyFont: { family: 'Inter', size: 12, weight: '600' },
+          callbacks: { label: c => num(c.parsed.y) }
+        }
+      },
+      scales: {
+        x: { display: false },
+        y: {
+          position: 'right', border: { display: false },
+          grid: { color: LINEC, drawTicks: false },
+          ticks: { maxTicksLimit: 3, color: MUTED, font: { family: 'Inter', size: 11 }, padding: 6, callback: v => num(v) }
+        }
+      }
+    }
+  });
+}
+
+// ---- small builders -------------------------------------------------------
+
+function disclosure(text, build) {
+  const btn = document.createElement('button');
+  btn.type = 'button'; btn.textContent = text;
+  btn.setAttribute('aria-expanded', 'false');
+  const panel = document.createElement('div');
+  panel.className = 'panel';
+  build(panel);
+  btn.onclick = () => btn.setAttribute('aria-expanded', String(panel.classList.toggle('open')));
+  return { btn, panel };
+}
+
+function emptyPlot(msg) {
+  const el = document.createElement('div');
+  el.className = 'plot-empty';
+  el.textContent = msg;
+  return el;
+}
+
+function addPlot(host, id, labels, values) {
+  if (typeof Chart === 'undefined') { host.appendChild(emptyPlot('Charts could not load. Reload the page.')); return; }
+  const wrap = document.createElement('div');
+  wrap.className = 'plot';
+  const c = document.createElement('canvas');
+  c.id = id; wrap.appendChild(c); host.appendChild(wrap);
+  requestAnimationFrame(() => drawPlot(c, labels, values));
+}
+
+function shell(spec) {
+  const section = document.createElement('section');
+  section.className = 'channel';
+  const top = document.createElement('div');
+  top.className = 'channel-top';
+  const left = document.createElement('div');
+  left.innerHTML = `<div class="name-row"><h2>${spec.name}</h2><span class="eyebrow">${spec.source}</span></div>`;
+  const right = document.createElement('div');
+  top.append(left, right);
+  section.appendChild(top);
+  return { section, left, right };
+}
+
+function statsRow(parts) {
+  if (!parts.length) return null;
+  const el = document.createElement('div');
+  el.className = 'stats';
+  el.innerHTML = parts.join('');
+  return el;
+}
+
+// ---- load / render --------------------------------------------------------
+
+async function load() {
+  const res = await fetch('/api/data');
+  render(await res.json());
+}
+
+function render(data) {
+  document.getElementById('when').textContent =
+    'Updated ' + new Date().toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  const main = document.getElementById('channels');
+  main.innerHTML = '';
+  for (const key of ORDER) {
+    main.appendChild(key === 'youtube' ? renderYouTube(data) : renderChannel(key, data));
+  }
+}
+
+function renderYouTube(data) {
+  const spec = CHANNELS.youtube;
+  const { section, left, right } = shell(spec);
+  const yt = data.youtube;
+  const views = data.youtube_views_history || [];
+
+  if (!data.youtube_configured) {
+    left.insertAdjacentHTML('beforeend', `<p class="figure-label">Add YOUTUBE_API_KEY and YOUTUBE_CHANNEL_ID in Render to switch this on.</p>`);
+  } else if (!yt) {
+    left.insertAdjacentHTML('beforeend', `<p class="figure-label">No figures pulled yet.</p>`);
+  } else {
+    const row = document.createElement('div');
+    row.className = 'figure-row';
+    row.innerHTML = `<span class="figure">${num(yt.subscriber_count)}</span>`;
+    left.appendChild(row);
+    left.insertAdjacentHTML('beforeend', `<p class="figure-label">subscribers</p>`);
+
+    const parts = [`<span><b>${num(yt.view_count)}</b> views all time</span>`,
+                   `<span><b>${num(yt.video_count)}</b> videos</span>`];
+    const hasWatch = views.some(v => typeof v.data.watch_time_hours === 'number');
+    if (hasWatch) {
+      const wt = views.slice(-30).reduce((a, r) => a + (r.data.watch_time_hours || 0), 0);
+      parts.push(`<span><b>${wt.toFixed(1)}h</b> watched in 30 days</span>`);
+    }
+    const sr = statsRow(parts);
+    left.appendChild(sr);
+
+    if (views.length >= 60) {
+      const recent = views.slice(-30).reduce((a, r) => a + (r.data.views || 0), 0);
+      const prior  = views.slice(-60, -30).reduce((a, r) => a + (r.data.views || 0), 0);
+      const d = document.createElement('div');
+      d.className = 'stats';
+      const span = document.createElement('span');
+      span.innerHTML = `<b>${num(recent)}</b> views in 30 days `;
+      span.appendChild(deltaEl(pctChange(recent, prior), 'vs prior 30'));
+      d.appendChild(span);
+      left.appendChild(d);
+    }
+    if (!hasWatch && views.length) {
+      left.insertAdjacentHTML('beforeend',
+        `<p class="note">Your Studio export only contains views. Re-export with watch time and subscribers selected to chart those too.</p>`);
+    }
+  }
+
+  if (views.length >= 2) {
+    addPlot(right, 'plot-youtube', views.map(v => v.entry_date), views.map(v => v.data.views ?? null));
+  } else {
+    right.appendChild(emptyPlot('Import Totals.csv to chart daily views.'));
+  }
+
+  const tools = document.createElement('div');
+  tools.className = 'tools';
+  const panels = document.createElement('div');
+
+  const refresh = document.createElement('button');
+  refresh.type = 'button'; refresh.className = 'primary'; refresh.textContent = 'Pull latest figures';
+  const status = document.createElement('span');
+  status.className = 'status';
+  refresh.onclick = async () => {
+    refresh.disabled = true; refresh.textContent = 'Pulling…'; status.className = 'status'; status.textContent = '';
+    try {
+      const out = await (await fetch('/api/refresh-youtube', { method: 'POST' })).json();
+      if (out.error) { status.className = 'status err'; status.textContent = out.error; } else load();
+    } catch { status.className = 'status err'; status.textContent = 'Could not reach the server.'; }
+    refresh.disabled = false; refresh.textContent = 'Pull latest figures';
+  };
+  tools.appendChild(refresh);
+
+  const imp = uploadControl(spec.upload.endpoint, spec.upload.note);
+  tools.appendChild(imp.btn); panels.appendChild(imp.panel);
+
+  const vids = data.youtube_top_videos;
+  if (vids && vids.length) {
+    const d = disclosure('Top videos', p => {
+      p.innerHTML = `<table>
+        <thead><tr><th>Video</th><th class="num">Views</th><th class="num">Watch</th><th class="num">Thumb. shown</th><th class="num">Click rate</th></tr></thead>
+        <tbody>${vids.slice(0, 8).map(v => `<tr>
+          <td class="label">${esc(v.title || v.content)}</td>
+          <td class="num">${num(v.views || 0)}</td>
+          <td class="num">${Number(v.watch_time_hours || 0).toFixed(1)}h</td>
+          <td class="num">${v.thumbnail_impressions == null ? DASH : num(v.thumbnail_impressions)}</td>
+          <td class="num">${v.ctr == null ? DASH : v.ctr + '%'}</td>
+        </tr>`).join('')}</tbody></table>`;
+    });
+    tools.appendChild(d.btn); panels.appendChild(d.panel);
+  }
+
+  tools.appendChild(status);
+  section.append(tools, panels);
+  return section;
+}
+
+function renderChannel(key, data) {
+  const spec = CHANNELS[key];
+  const rows = data.manual[key] || [];
+  const { section, left, right } = shell(spec);
+  const hf = spec.headline;
+  const anchor = anchorDate(rows);
+  const stale = anchor ? daysSince(anchor) : null;
+
+  // headline
+  let figure = null, delta = null;
+  if (hf.kind === 'flow') {
+    figure = sumWindow(rows, hf.field, 0, anchor);
+    if (figure !== null) {
+      const prior = sumWindow(rows, hf.field, 1, anchor);
+      if (prior !== null) delta = pctChange(figure, prior);
+    }
+  } else {
+    const l = latestValue(rows, hf.field);
+    if (l) { figure = l.value; delta = pctChange(l.value, valueAt(rows, hf.field, 30)); }
+  }
+
+  const row = document.createElement('div');
+  row.className = 'figure-row';
+  if (figure === null) {
+    row.innerHTML = `<span class="figure absent">${DASH}</span>`;
+  } else {
+    row.innerHTML = `<span class="figure">${num(figure)}</span>`;
+    row.appendChild(deltaEl(delta, 'vs prior 30 days'));
+  }
+  left.appendChild(row);
+  const period = (hf.kind === 'flow' && anchor) ? ` to ${shortDate(anchor)}` : '';
+  left.insertAdjacentHTML('beforeend', `<p class="figure-label">${hf.label}${period}</p>`);
+
+  // secondary stats, showing a dash where a metric was never uploaded
+  const parts = (spec.stats || []).map(s => {
+    const v = readStat(rows, s);
+    const shown = v === null ? `<span class="gap">${DASH}</span>` : `<b>${num(v)}${s.suffix || ''}</b>`;
+    const label = (v === 1 && s.one) ? s.one : s.label;
+    return `<span>${shown} ${label}</span>`;
+  });
+  const sr = statsRow(parts);
+  if (sr) left.appendChild(sr);
+
+  // say plainly which upload is missing, rather than showing a silent zero
+  const missing = [];
+  for (const [field, source] of Object.entries(spec.needs || {})) {
+    const present = rows.some(r => typeof r.data[field] === 'number');
+    if (rows.length && !present) missing.push(source);
+  }
+  if (stale !== null && stale > 10) {
+    left.insertAdjacentHTML('beforeend',
+      `<p class="note">Latest data is ${stale} days old (${shortDate(anchor)}). Figures cover the 30 days up to then, not up to today. Import a fresh export.</p>`);
+  }
+  if (missing.length) {
+    left.insertAdjacentHTML('beforeend',
+      `<p class="note">Some figures are missing because ${[...new Set(missing)].join(' and ')} hasn't been uploaded.</p>`);
+  } else if (!rows.length) {
+    left.insertAdjacentHTML('beforeend',
+      `<p class="note">Nothing logged yet. ${spec.upload ? 'Import an export to fill this in.' : 'Add the first numbers below.'}</p>`);
+  }
+
+  // plot
+  const series = [...rows].reverse().filter(r => typeof r.data[hf.field] === 'number');
+  if (series.length >= 2) {
+    addPlot(right, 'plot-' + key, series.map(r => r.entry_date), series.map(r => r.data[hf.field]));
+  } else {
+    right.appendChild(emptyPlot(spec.upload ? 'Import an export to chart the trend.' : 'Log two or more days to chart the trend.'));
+  }
+
+  // tools
+  const tools = document.createElement('div');
+  tools.className = 'tools';
+  const panels = document.createElement('div');
+
+  const add = disclosure('Add numbers', p => {
+    p.innerHTML = `<p class="panel-note">One row per day, from ${spec.name}'s own analytics. Leave a field blank if you don't have it.</p>`;
+    const form = document.createElement('form');
+    const grid = document.createElement('div');
+    grid.className = 'field-grid';
+    grid.innerHTML = `<div><label for="${key}-date">Date</label><input id="${key}-date" type="date" name="entry_date" required></div>` +
+      spec.entry.map(f => `<div><label for="${key}-${f.field}">${f.label}</label><input id="${key}-${f.field}" type="number" step="any" name="${f.field}"></div>`).join('');
+    const save = document.createElement('button');
+    save.type = 'submit'; save.className = 'primary'; save.textContent = 'Save entry';
+    save.style.marginTop = '14px';
+    form.append(grid, save);
+    form.onsubmit = async e => {
+      e.preventDefault();
+      const payload = {};
+      for (const [k, v] of new FormData(form).entries()) {
+        if (v === '') continue;
+        payload[k] = k === 'entry_date' ? v : Number(v);
+      }
+      save.disabled = true;
+      await fetch(`/api/manual/${key}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      form.reset(); save.disabled = false; load();
+    };
+    p.appendChild(form);
+  });
+  tools.appendChild(add.btn); panels.appendChild(add.panel);
+
+  if (spec.upload) {
+    const imp = uploadControl(spec.upload.endpoint, spec.upload.note);
+    tools.appendChild(imp.btn); panels.appendChild(imp.panel);
+  }
+
+  // LinkedIn: who follows, not just how many
+  if (key === 'linkedin' && data.linkedin_audience) {
+    const aud = data.linkedin_audience;
+    const d = disclosure('Who follows you', p => {
+      p.innerHTML = `<p class="panel-note">A snapshot from your latest Followers export. This is the audience your posts are actually reaching.</p>`;
+      const grid = document.createElement('div');
+      grid.className = 'aud-grid';
+      const titles = { seniority: 'Seniority', industry: 'Industry', job_function: 'Job function', company_size: 'Company size', location: 'Location' };
+      for (const [k, title] of Object.entries(titles)) {
+        const rowsA = aud[k];
+        if (!rowsA || !rowsA.length) continue;
+        const max = Math.max(...rowsA.map(r => r.count));
+        const block = document.createElement('div');
+        block.className = 'aud';
+        block.innerHTML = `<h4>${title}</h4>` + rowsA.slice(0, 6).map(r => `
+          <div class="bar-row">
+            <span class="bar-label" title="${esc(r.label)}">${esc(r.label)}</span>
+            <span class="bar-count">${num(r.count)}</span>
+            <span class="bar-track"><span class="bar-fill" style="width:${Math.round(r.count / max * 100)}%"></span></span>
+          </div>`).join('');
+        grid.appendChild(block);
+      }
+      p.appendChild(grid);
+    });
+    tools.appendChild(d.btn); panels.appendChild(d.panel);
+  }
+
+  if (key === 'linkedin' && data.linkedin_top_posts && data.linkedin_top_posts.length) {
+    const posts = data.linkedin_top_posts;
+    const d = disclosure('Top posts', p => {
+      p.innerHTML = `<p class="panel-note">Ranked by clicks, not reach. A post that was seen is not the same as a post that worked.</p>
+        <div class="scroll"><table>
+        <thead><tr><th>Post</th><th class="num">Clicks</th><th class="num">Impressions</th><th class="num">Click rate</th></tr></thead>
+        <tbody>${posts.map(x => `<tr>
+          <td class="label">${x.link ? `<a href="${esc(x.link)}" target="_blank" rel="noopener">${esc(trim(x.title))}</a>` : esc(trim(x.title))}</td>
+          <td class="num">${x.clicks == null ? DASH : num(x.clicks)}</td>
+          <td class="num">${x.impressions == null ? DASH : num(x.impressions)}</td>
+          <td class="num">${x.ctr == null ? DASH : x.ctr + '%'}</td>
+        </tr>`).join('')}</tbody></table></div>`;
+    });
+    tools.appendChild(d.btn); panels.appendChild(d.panel);
+  }
+
+  if (key === 'substack' && data.substack_top_posts && data.substack_top_posts.length) {
+    const posts = data.substack_top_posts;
+    const d = disclosure('Top posts', p => {
+      p.innerHTML = `<p class="panel-note">Open rate shows who read it. Joined shows which post was worth subscribing for.</p>
+        <table>
+        <thead><tr><th>Post</th><th class="num">Open rate</th><th class="num">Reads</th><th class="num">Joined</th></tr></thead>
+        <tbody>${posts.map(x => `<tr>
+          <td class="label">${esc(trim(x.title))}</td>
+          <td class="num">${x.open_rate == null ? DASH : x.open_rate + '%'}</td>
+          <td class="num">${x.reads == null ? DASH : num(x.reads)}</td>
+          <td class="num">${x.subscribes == null ? DASH : num(x.subscribes)}</td>
+        </tr>`).join('')}</tbody></table>`;
+    });
+    tools.appendChild(d.btn); panels.appendChild(d.panel);
+  }
+
+  if (rows.length) {
+    const d = disclosure(`Recent entries (${rows.length})`, p => {
+      const box = document.createElement('div');
+      box.className = 'scroll';
+      const t = document.createElement('table');
+      t.innerHTML = `<thead><tr><th>Date</th>${spec.entry.map(f => `<th class="num">${f.label}</th>`).join('')}<th></th></tr></thead>`;
+      const tb = document.createElement('tbody');
+      rows.forEach(r => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${r.entry_date}</td>` +
+          spec.entry.map(f => `<td class="num">${typeof r.data[f.field] === 'number' ? num(r.data[f.field]) : DASH}</td>`).join('');
+        const cell = document.createElement('td');
+        cell.className = 'num';
+        const del = document.createElement('button');
+        del.type = 'button'; del.textContent = 'Remove';
+        del.style.cssText = 'font-size:11px;padding:3px 8px';
+        del.onclick = async () => {
+          del.disabled = true;
+          await fetch(`/api/manual/${key}/${r.id}`, { method: 'DELETE' });
+          load();
+        };
+        cell.appendChild(del); tr.appendChild(cell); tb.appendChild(tr);
+      });
+      t.appendChild(tb); box.appendChild(t); p.appendChild(box);
+    });
+    tools.appendChild(d.btn); panels.appendChild(d.panel);
+  }
+
+  section.append(tools, panels);
+  return section;
+}
+
+function uploadControl(endpoint, note) {
+  return disclosure('Import file', p => {
+    p.innerHTML = `<p class="panel-note">${note}</p>`;
+    const pick = document.createElement('button');
+    pick.type = 'button'; pick.className = 'primary'; pick.textContent = 'Choose files';
+    const input = document.createElement('input');
+    input.type = 'file'; input.multiple = true; input.accept = '.csv,.xls,.xlsx';
+    const status = document.createElement('span');
+    status.className = 'status';
+    status.style.marginLeft = '10px';
+
+    pick.onclick = () => input.click();
+    input.onchange = async () => {
+      if (!input.files.length) return;
+      const fd = new FormData();
+      for (const f of input.files) fd.append('files', f);
+      pick.disabled = true; status.className = 'status'; status.textContent = 'Reading…';
+      try {
+        const res = await fetch(endpoint, { method: 'POST', body: fd });
+        const out = await res.json();
+        if (!res.ok || out.error) {
+          status.className = 'status err';
+          status.textContent = out.error || 'That file could not be read.';
+        } else {
+          status.className = 'status ok';
+          const what = out.read && out.read.length ? ` (${out.read.join(', ')})` : '';
+          status.textContent = `${out.inserted || 0} days added, ${out.updated || 0} updated${what}.`;
+          load();
+        }
+      } catch {
+        status.className = 'status err'; status.textContent = 'Upload failed. Try again.';
+      }
+      pick.disabled = false; input.value = '';
+    };
+    p.append(pick, input, status);
+  });
+}
+
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const trim = s => { const t = String(s ?? '').replace(/\s+/g, ' ').trim(); return t.length > 90 ? t.slice(0, 90) + '…' : t || '(untitled)'; };
+
+load();
+</script>
+</body>
+</html>
